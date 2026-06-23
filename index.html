@@ -32,9 +32,9 @@
   .stage{width:100%; border-radius:12px; overflow:hidden; background:#05060a; line-height:0;}
   canvas{width:100%; display:block;}
   .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0;}
-  .card{background:var(--panel); border-radius:8px; padding:12px 14px;}
+  .card{background:var(--panel); border-radius:8px; padding:12px 14px; height:84px; overflow:hidden; display:flex; flex-direction:column; justify-content:center;}
   .card .lbl{font-size:13px; color:var(--muted); margin:0;}
-  .card .val{font-size:17px; font-weight:600; margin:4px 0 0;}
+  .card .val{font-size:16px; font-weight:600; margin:4px 0 0; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
   .btn{background:transparent; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 16px; font-size:14px; cursor:pointer; min-width:92px;}
   .btn:hover{background:var(--panel2);}
