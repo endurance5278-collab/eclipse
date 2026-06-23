@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한국에서 보는 일식 · 월식 시뮬레이션</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161922; --panel2:#1d212c; --line:#2c3140;
+    --text:#e7eaf0; --muted:#9aa3b5; --dim:#6b7385; --accent:#e0a93a; --accentbg:#33291a;
+    --accent2:#c0603a; --accent2bg:#34201a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    line-height:1.6; padding:24px 16px;}
+  .wrap{max-width:720px; margin:0 auto;}
+  h1{font-size:20px; font-weight:600; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 18px;}
+  .tabs{display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:18px;}
+  .tabs button{background:transparent; color:var(--text); border:none; padding:10px 22px; font-size:15px; font-weight:600; cursor:pointer;}
+  .tabs button+button{border-left:1px solid var(--line);}
+  .tabs button.on{background:var(--panel2); box-shadow:inset 0 -2px 0 var(--accent);}
+  .row{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .seg button{background:transparent; color:var(--text); border:none; padding:8px 12px; font-size:14px; cursor:pointer; transition:background .15s;}
+  .seg button+button{border-left:1px solid var(--line);}
+  .seg button:hover{background:var(--panel2);}
+  .seg button.on{background:var(--accentbg); box-shadow:inset 0 0 0 1.5px var(--accent);}
+  .seg.moon button.on{background:var(--accent2bg); box-shadow:inset 0 0 0 1.5px var(--accent2);}
+  .clock{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:15px; font-weight:600;}
+  .stage{width:100%; border-radius:12px; overflow:hidden; background:#05060a; line-height:0;}
+  canvas{width:100%; display:block;}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0;}
+  .card{background:var(--panel); border-radius:8px; padding:12px 14px;}
+  .card .lbl{font-size:13px; color:var(--muted); margin:0;}
+  .card .val{font-size:17px; font-weight:600; margin:4px 0 0;}
+  .controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .btn{background:transparent; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 16px; font-size:14px; cursor:pointer; min-width:92px;}
+  .btn:hover{background:var(--panel2);}
+  input[type=range]{flex:1; min-width:160px; accent-color:var(--accent); height:4px;}
+  .seg.small button{min-width:50px; padding:8px 8px; font-size:13px;}
+  .note{font-size:12px; color:var(--dim); margin:14px 0 0;}
+  .hidden{display:none;}
+  .foot{font-size:11px; color:var(--dim); margin-top:22px; border-top:1px solid var(--line); padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>한국에서 보는 일식 · 월식 시뮬레이션</h1>
+  <p class="sub">실제 관측 데이터 기반 — 한국 표준시(KST) 기준</p>
+
+  <div class="tabs" id="tabs">
+    <button data-tab="solar" class="on">☀ 일식 (2035.09.02)</button>
+    <button data-tab="lunar">🌑 월식 (2026.03.03)</button>
+  </div>
+
+  <!-- ===================== SOLAR ===================== -->
+  <section id="sec-solar">
+    <div class="row">
+      <div class="seg" id="s_locseg">
+        <button data-k="seoul">서울</button>
+        <button data-k="goseong">고성</button>
+        <button data-k="pyongyang">평양</button>
+        <button data-k="busan">부산</button>
+        <button data-k="jeju">제주</button>
+      </div>
+      <span class="clock" id="s_clock">08:30:34 KST</span>
+    </div>
+    <div class="stage"><canvas id="s_ec" width="680" height="360"></canvas></div>
+    <div class="cards">
+      <div class="card"><p class="lbl">단계</p><p class="val" id="s_phase">식 시작</p></div>
+      <div class="card"><p class="lbl">가림률</p><p class="val" id="s_cov">0%</p></div>
+      <div class="card"><p class="lbl">태양 고도</p><p class="val" id="s_alt">28°</p></div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="s_play">▶ 재생</button>
+      <input type="range" id="s_pos" min="0" max="1000" value="0" step="1">
+      <div class="seg small" id="s_spdseg">
+        <button data-s="0.5">0.5×</button><button data-s="1">1×</button><button data-s="2">2×</button><button data-s="5">5×</button>
+      </div>
+    </div>
+    <p class="note">남쪽으로 갈수록 가림이 줄어듭니다: 평양(개기) &gt; 서울 96.7% &gt; 부산 90.1% &gt; 제주 83.9%. 고성 개기식 시각은 경로 가장자리 근사값입니다.</p>
+  </section>
+
+  <!-- ===================== LUNAR ===================== -->
+  <section id="sec-lunar" class="hidden">
+    <div class="row">
+      <div class="seg moon" id="l_locseg">
+        <button data-k="seoul">서울</button>
+        <button data-k="ba">부에노스아이레스</button>
+      </div>
+      <span class="clock" id="l_clock">17:44 KST</span>
+    </div>
+    <div class="stage"><canvas id="l_ec" width="680" height="360"></canvas></div>
+    <div class="cards">
+      <div class="card"><p class="lbl">단계 (천문)</p><p class="val" id="l_phase">반영식</p></div>
+      <div class="card"><p class="lbl">본영 식분</p><p class="val" id="l_mag">0.00</p></div>
+      <div class="card"><p class="lbl">달 고도</p><p class="val" id="l_alt">-7°</p></div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="l_play">▶ 재생</button>
+      <input type="range" id="l_pos" min="0" max="1000" value="0" step="1">
+      <div class="seg small moon" id="l_spdseg">
+        <button data-s="0.5">0.5×</button><button data-s="1">1×</button><button data-s="2">2×</button><button data-s="5">5×</button>
+      </div>
+    </div>
+    <p class="note" id="l_note">서울: 전 과정 관측 가능. 같은 월식이라 식분은 동일하지만 부에노스아이레스는 달이 약 06:39에 져서 반영 단계만 보입니다.</p>
+  </section>
+
+  <p class="foot">데이터 출처: Tutiempo, TheSkyLive, TimeandDate, NASA, Wikipedia. 일식 2035-09-02 · 월식 2026-03-03. 일부 가장자리 시각은 근사값입니다.</p>
+</div>
+
+<script>
+/* ===================== SOLAR APP ===================== */
+(function(){
+  var cv=document.getElementById('s_ec'), ctx=cv.getContext('2d');
+  var W=680,H=360, sx=340,sy=170,R=76;
+  var pos=document.getElementById('s_pos');
+  var clockEl=document.getElementById('s_clock'), phaseEl=document.getElementById('s_phase');
+  var covEl=document.getElementById('s_cov'), altEl=document.getElementById('s_alt');
+  var playBtn=document.getElementById('s_play');
+  var locseg=document.getElementById('s_locseg'), spdseg=document.getElementById('s_spdseg');
+  var speed=1, BASE=16000;
+  function hms(h,m,s){return h*3600+m*60+s;}
+  var LOC={
+    seoul:{key:'seoul', total:false, scale:1.0, covmax:0.967, T0:hms(8,30,34), TM:hms(9,45,56), T1:hms(11,9,5), a0:28, am:42, a1:55},
+    goseong:{key:'goseong', total:true, scale:1.02, frac:0.78, T0:hms(8,31,0), TM:hms(9,46,20), T1:hms(11,10,0), a0:28, am:43, a1:56},
+    pyongyang:{key:'pyongyang', total:true, scale:1.028, frac:0.12, T0:hms(8,30,14), TM:hms(9,44,32), T1:hms(11,6,24), a0:27, am:41, a1:53},
+    busan:{key:'busan', total:false, scale:1.0, covmax:0.901, T0:hms(8,31,50), TM:hms(9,48,53), T1:hms(11,13,58), a0:31, am:45, a1:59},
+    jeju:{key:'jeju', total:false, scale:1.0, covmax:0.839, T0:hms(8,29,8), TM:hms(9,44,33), T1:hms(11,8,31), a0:28, am:43, a1:58}
+  };
+  var cfg=LOC.seoul;
+  function lens(d,r,Rm){
+    if(d>=r+Rm) return 0; if(d<=Math.abs(Rm-r)) return Math.PI*Math.min(r,Rm)*Math.min(r,Rm);
+    var r2=r*r,Rm2=Rm*Rm; var a=(d*d+r2-Rm2)/(2*d*r); a=Math.max(-1,Math.min(1,a));
+    var b=(d*d+Rm2-r2)/(2*d*Rm); b=Math.max(-1,Math.min(1,b));
+    return r2*Math.acos(a)+Rm2*Math.acos(b)-0.5*Math.sqrt(Math.max(0,(-d+r+Rm)*(d+r-Rm)*(d-r+Rm)*(d+r+Rm)));
+  }
+  var sunArea=Math.PI*R*R, geom={};
+  function build(){
+    var Rm=R*cfg.scale, tmax=(cfg.TM-cfg.T0)/(cfg.T1-cfg.T0), dmin;
+    if(cfg.total){ dmin=(Rm-R)*cfg.frac; }
+    else { var lo=0,hi=R+Rm; for(var k=0;k<60;k++){var mid=(lo+hi)/2; if(lens(mid,R,Rm)/sunArea>cfg.covmax) lo=mid; else hi=mid;} dmin=(lo+hi)/2; }
+    var edge=R+Rm, vel=Math.sqrt(Math.max(0,edge*edge-dmin*dmin))/tmax; geom={Rm:Rm,tmax:tmax,dmin:dmin,vel:vel};
+  }
+  var ax=0.940, ay=0.340, px=-0.340, py=0.940;
+  var stars=[]; for(var i=0;i<150;i++) stars.push({x:Math.random()*W,y:Math.random()*(H-20),r:Math.random()*1.1+0.3,t:Math.random()});
+  var streamers=[]; for(var i=0;i<72;i++) streamers.push({ang:i/72*6.283+Math.random()*0.04, len:1.28+0.62*Math.random(), w:0.5+Math.random()*1.1});
+  var proms=[{ang:0.6,s:7},{ang:2.1,s:5},{ang:3.5,s:8},{ang:4.7,s:5},{ang:5.6,s:6}];
+  function fmt(s){s=Math.round(s);var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;}
+  function draw(t){
+    var u=geom.vel*(t-geom.tmax);
+    var mx=sx+px*geom.dmin+ax*u, my=sy+py*geom.dmin+ay*u;
+    var d=Math.hypot(mx-sx,my-sy);
+    var cov=Math.max(0,Math.min(1,lens(d,R,geom.Rm)/sunArea));
+    var isTotal=cfg.total && cov>0.999, nearTotal=cfg.total && cov>0.978 && !isTotal;
+    var b = isTotal?0.05:(1-0.86*Math.pow(cov,1.45));
+    var sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'rgb('+Math.round(20*b+8+22*cov)+','+Math.round(70*b+8)+','+Math.round(128*b+14)+')');
+    sky.addColorStop(1,'rgb('+Math.round(70*b+24+44*cov)+','+Math.round(96*b+14)+','+Math.round(120*b+18)+')');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+    var starA=Math.max(0,(0.42-b)/0.42);
+    if(starA>0){ for(var i=0;i<stars.length;i++){var s=stars[i]; ctx.globalAlpha=starA*(0.4+0.6*Math.abs(Math.sin((s.t+t)*6.28)));
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28); ctx.fill();} ctx.globalAlpha=1; }
+    if(isTotal){
+      var cg=ctx.createRadialGradient(mx,my,R*0.92,mx,my,R*3.0);
+      cg.addColorStop(0,'rgba(255,252,242,0.7)'); cg.addColorStop(0.35,'rgba(248,240,222,0.28)'); cg.addColorStop(0.7,'rgba(230,225,235,0.10)'); cg.addColorStop(1,'rgba(230,225,235,0)');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(mx,my,R*3.0,0,6.28); ctx.fill();
+      ctx.save(); ctx.translate(mx,my); ctx.lineCap='round';
+      for(var i=0;i<streamers.length;i++){var st=streamers[i]; ctx.globalAlpha=0.22; ctx.strokeStyle='rgba(248,246,238,0.5)'; ctx.lineWidth=st.w;
+        ctx.beginPath(); ctx.moveTo(Math.cos(st.ang)*R,Math.sin(st.ang)*R); ctx.lineTo(Math.cos(st.ang)*R*st.len,Math.sin(st.ang)*R*st.len); ctx.stroke();}
+      ctx.globalAlpha=1; ctx.restore();
+      ctx.strokeStyle='rgba(255,253,245,0.7)'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(mx,my,R*1.03,0,6.28); ctx.stroke();
+    } else {
+      var glow=ctx.createRadialGradient(sx,sy,R*0.6,sx,sy,R*2.3); var ga=0.55*b+0.05;
+      glow.addColorStop(0,'rgba(255,238,180,'+ga+')'); glow.addColorStop(0.5,'rgba(255,226,150,'+(ga*0.4)+')'); glow.addColorStop(1,'rgba(255,226,150,0)');
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(sx,sy,R*2.3,0,6.28); ctx.fill();
+    }
+    if(!isTotal){
+      var sg=ctx.createRadialGradient(sx-R*0.15,sy-R*0.15,R*0.1,sx,sy,R);
+      sg.addColorStop(0,'#fffefb'); sg.addColorStop(0.55,'#fff6d6'); sg.addColorStop(0.86,'#ffe294'); sg.addColorStop(1,'#f8bf45');
+      ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(sx,sy,R,0,6.28); ctx.fill();
+      ctx.strokeStyle='rgba(255,248,225,0.55)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(sx,sy,R,0,6.28); ctx.stroke();
+    }
+    if(isTotal){
+      for(var i=0;i<proms.length;i++){var p=proms[i]; var pxp=mx+Math.cos(p.ang)*R, pyp=my+Math.sin(p.ang)*R;
+        var pg=ctx.createRadialGradient(pxp,pyp,0,pxp,pyp,p.s); pg.addColorStop(0,'rgba(255,90,120,0.95)'); pg.addColorStop(1,'rgba(255,60,90,0)');
+        ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(pxp,pyp,p.s,0,6.28); ctx.fill();}
+      ctx.strokeStyle='rgba(255,120,130,0.45)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(mx,my,R,0,6.28); ctx.stroke();
+    }
+    var mg=ctx.createRadialGradient(mx,my,R*0.6,mx,my,R); mg.addColorStop(0,'#040406'); mg.addColorStop(1,'#0a0b10');
+    ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,geom.Rm,0,6.28); ctx.fill();
+    if(nearTotal){
+      var a2=Math.atan2(sy-my,sx-mx); var bx=mx+Math.cos(a2)*geom.Rm, by=my+Math.sin(a2)*geom.Rm;
+      ctx.strokeStyle='rgba(255,150,150,0.5)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(mx,my,geom.Rm,0,6.28); ctx.stroke();
+      var dr=ctx.createRadialGradient(bx,by,0,bx,by,16); dr.addColorStop(0,'rgba(255,255,250,1)'); dr.addColorStop(0.4,'rgba(255,250,225,0.7)'); dr.addColorStop(1,'rgba(255,245,210,0)');
+      ctx.fillStyle=dr; ctx.beginPath(); ctx.arc(bx,by,16,0,6.28); ctx.fill();
+      ctx.fillStyle='#fffef8'; ctx.beginPath(); ctx.arc(bx,by,3.4,0,6.28); ctx.fill();
+    }
+    var time=cfg.T0+t*(cfg.T1-cfg.T0); clockEl.textContent=fmt(time)+' KST'; covEl.textContent=Math.round(cov*1000)/10+'%';
+    var altv= time<cfg.TM ? cfg.a0+(cfg.am-cfg.a0)*((time-cfg.T0)/(cfg.TM-cfg.T0)) : cfg.am+(cfg.a1-cfg.am)*((time-cfg.TM)/(cfg.T1-cfg.TM));
+    altEl.textContent=Math.round(altv)+'°';
+    var name, pct=cov*100;
+    if(isTotal) name='개기식'; else if(nearTotal) name='다이아몬드 링';
+    else if(pct<0.3) name=(t<geom.tmax?'식 시작 전':'식 종료');
+    else if(!cfg.total && Math.abs(t-geom.tmax)<0.012) name='최대식 '+(cfg.covmax*100).toFixed(1)+'%';
+    else if(!cfg.total && pct>=cfg.covmax*100-7) name='최대식 부근';
+    else name=(t<geom.tmax?'부분식 (커지는 중)':'부분식 (줄어드는 중)');
+    phaseEl.textContent=name;
+  }
+  function setLoc(k){ stop(); cfg=LOC[k]; build(); locseg.querySelectorAll('button').forEach(function(bn){ bn.classList.toggle('on', bn.dataset.k===k); }); pos.value=0; draw(0); }
+  pos.addEventListener('input',function(){stop(); draw(pos.value/1000);});
+  var anim=null;
+  function stop(){if(anim){cancelAnimationFrame(anim);anim=null;playBtn.textContent='▶ 재생';}}
+  function play(){ playBtn.textContent='⏸ 멈춤'; var last=performance.now(), prog=parseFloat(pos.value)/1000; if(prog>=1) prog=0;
+    function step(now){var dt=now-last; last=now; prog+=(dt/BASE)*speed; if(prog>=1) prog=1; pos.value=Math.round(prog*1000); draw(prog); if(prog<1) anim=requestAnimationFrame(step); else stop();}
+    anim=requestAnimationFrame(step); }
+  playBtn.addEventListener('click',function(){if(anim)stop();else play();});
+  locseg.querySelectorAll('button').forEach(function(bn){ bn.addEventListener('click',function(){ setLoc(bn.dataset.k); }); });
+  function setSpeed(v){ speed=v; spdseg.querySelectorAll('button').forEach(function(bn){ bn.classList.toggle('on', parseFloat(bn.dataset.s)===v); }); }
+  spdseg.querySelectorAll('button').forEach(function(bn){ bn.addEventListener('click',function(){ setSpeed(parseFloat(bn.dataset.s)); }); });
+  setSpeed(1); setLoc('seoul');
+  window.__solarStop=stop;
+})();
+
+/* ===================== LUNAR APP ===================== */
+(function(){
+  var cv=document.getElementById('l_ec'), ctx=cv.getContext('2d');
+  var W=680,H=360, mxC=340, rm=32, HZ=300, K=3.6;
+  var pos=document.getElementById('l_pos');
+  var clockEl=document.getElementById('l_clock'), phaseEl=document.getElementById('l_phase');
+  var magEl=document.getElementById('l_mag'), altEl=document.getElementById('l_alt'), noteEl=document.getElementById('l_note');
+  var playBtn=document.getElementById('l_play');
+  var locseg=document.getElementById('l_locseg'), spdseg=document.getElementById('l_spdseg');
+  var speed=1, BASE=20000;
+  var Ru=2.65*rm, Rp=4.70*rm, dmin=1.348*rm;
+  var CT=[524,590,664,694,723,797,863];
+  var P1=524, P4=863, MAX=694, U1=590;
+  var vel=Math.sqrt((Ru+rm)*(Ru+rm)-dmin*dmin)/(MAX-U1);
+  var ax=0.985, ay=0.174, px=-0.174, py=0.985;
+  var LOC={
+    seoul:{key:'seoul', off:540, alts:[-7,5,19,25,30,43,52], note:'서울: 전 과정 관측 가능. 반영 17:44 · 부분 18:50 · 개기 20:04~21:03(최대 20:34) · 반영 종료 23:23.'},
+    ba:{key:'ba', off:-180, alts:[10,-2,-17,-23,-28,-42,-53], note:'부에노스아이레스: 달이 약 06:39에 짐. 반영 단계(05:44~)만 보이고 부분·개기식은 지평선 아래에서 진행.'}
+  };
+  var cfg=LOC.seoul;
+  var stars=[]; for(var i=0;i<150;i++) stars.push({x:Math.random()*W,y:Math.random()*HZ,r:Math.random()*1.1+0.3,t:Math.random()});
+  var maria=[{x:-10,y:-8,r:9},{x:8,y:-5,r:6},{x:-3,y:11,r:10},{x:13,y:10,r:5},{x:5,y:2,r:4}];
+  function interp(arr,tm){ if(tm<=CT[0]) return arr[0]; if(tm>=CT[6]) return arr[6];
+    for(var i=0;i<6;i++){ if(tm<=CT[i+1]){ var f=(tm-CT[i])/(CT[i+1]-CT[i]); return arr[i]+(arr[i+1]-arr[i])*f; } } return arr[6]; }
+  function fmt(m){m=((Math.round(m)%1440)+1440)%1440;var h=Math.floor(m/60),mm=m%60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm;}
+  function draw(t){
+    var tm=P1+t*(P4-P1); var u=vel*(tm-MAX); var alt=interp(cfg.alts,tm); var my=HZ-alt*K;
+    var cx=mxC+px*dmin+ax*u, cy=my+py*dmin+ay*u; var d=Math.hypot(cx-mxC,cy-my);
+    var umMag=(Ru+rm-d)/(2*rm), penMag=(Rp+rm-d)/(2*rm);
+    var isTotal=d<Ru-rm, isPartial=!isTotal&&d<Ru+rm, isPen=!isPartial&&d<Rp+rm;
+    var fullyBelow=(my-rm)>HZ;
+    ctx.fillStyle='#05060a'; ctx.fillRect(0,0,W,H);
+    var sb=isTotal?1:0.55;
+    for(var i=0;i<stars.length;i++){var s=stars[i]; ctx.globalAlpha=sb*(0.35+0.55*Math.abs(Math.sin((s.t+t)*6.28)));
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28); ctx.fill();} ctx.globalAlpha=1;
+    if(!fullyBelow){
+      var hg=ctx.createRadialGradient(mxC,my,rm*0.2,mxC,my,rm);
+      hg.addColorStop(0,'#f4f1e8'); hg.addColorStop(0.8,'#dcd7c8'); hg.addColorStop(1,'#bdb6a4');
+      ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(mxC,my,rm,0,6.28); ctx.fill();
+      ctx.fillStyle='rgba(150,145,130,0.45)';
+      for(var k=0;k<maria.length;k++){var ma=maria[k]; ctx.beginPath(); ctx.arc(mxC+ma.x,my+ma.y,ma.r,0,6.28); ctx.fill();}
+      if(penMag>0 && !isTotal){ ctx.save(); ctx.beginPath(); ctx.arc(mxC,my,rm,0,6.28); ctx.clip();
+        ctx.globalAlpha=Math.min(0.30, penMag*0.14); ctx.fillStyle='#16100a'; ctx.fillRect(mxC-rm,my-rm,2*rm,2*rm); ctx.restore(); ctx.globalAlpha=1; }
+      if(d<Ru+rm){ ctx.save(); ctx.beginPath(); ctx.arc(mxC,my,rm,0,6.28); ctx.clip(); ctx.beginPath(); ctx.arc(cx,cy,Ru,0,6.28); ctx.clip();
+        var ug=ctx.createRadialGradient(cx,cy,0,cx,cy,Ru);
+        ug.addColorStop(0,'rgb(64,18,10)'); ug.addColorStop(0.65,'rgb(140,52,28)'); ug.addColorStop(0.9,'rgb(188,104,64)'); ug.addColorStop(1,'rgb(150,120,95)');
+        ctx.fillStyle=ug; ctx.fillRect(mxC-rm,my-rm,2*rm,2*rm); ctx.restore(); }
+      ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(mxC,my,rm,0,6.28); ctx.stroke();
+    }
+    var hgrad=ctx.createLinearGradient(0,HZ-14,0,HZ+2);
+    hgrad.addColorStop(0,'rgba(60,46,40,0)'); hgrad.addColorStop(1,'rgba(70,52,44,0.5)');
+    ctx.fillStyle=hgrad; ctx.fillRect(0,HZ-14,W,16);
+    ctx.fillStyle='#0a0c12'; ctx.fillRect(0,HZ,W,H-HZ);
+    ctx.fillStyle='rgba(120,90,70,0.5)'; ctx.fillRect(0,HZ-1,W,1.5);
+    if(fullyBelow){ ctx.fillStyle='rgba(220,210,200,0.75)'; ctx.font='13px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('지평선 아래 — 이 단계는 이 지역에서 보이지 않습니다', W/2, HZ+30); ctx.textAlign='left'; }
+    clockEl.textContent=fmt(tm+cfg.off)+' '+(cfg.key==='seoul'?'KST':'ART');
+    var name = isTotal?'개기식 (블러드문)' : isPartial?'부분식' : isPen?'반영식' : (t<0.5?'식 전':'식 종료');
+    phaseEl.textContent=name; magEl.textContent=(umMag>0?umMag:0).toFixed(2);
+    altEl.textContent=Math.round(alt)+'°'+(alt<0?' · 지평선 아래':'');
+  }
+  function setLoc(k){ stop(); cfg=LOC[k]; noteEl.textContent=cfg.note;
+    locseg.querySelectorAll('button').forEach(function(bn){ bn.classList.toggle('on', bn.dataset.k===k); }); pos.value=0; draw(0); }
+  pos.addEventListener('input',function(){stop(); draw(pos.value/1000);});
+  var anim=null;
+  function stop(){if(anim){cancelAnimationFrame(anim);anim=null;playBtn.textContent='▶ 재생';}}
+  function play(){ playBtn.textContent='⏸ 멈춤'; var last=performance.now(), prog=parseFloat(pos.value)/1000; if(prog>=1) prog=0;
+    function step(now){var dt=now-last; last=now; prog+=(dt/BASE)*speed; if(prog>=1) prog=1; pos.value=Math.round(prog*1000); draw(prog); if(prog<1) anim=requestAnimationFrame(step); else stop();}
+    anim=requestAnimationFrame(step); }
+  playBtn.addEventListener('click',function(){if(anim)stop();else play();});
+  locseg.querySelectorAll('button').forEach(function(bn){ bn.addEventListener('click',function(){ setLoc(bn.dataset.k); }); });
+  function setSpeed(v){ speed=v; spdseg.querySelectorAll('button').forEach(function(bn){ bn.classList.toggle('on', parseFloat(bn.dataset.s)===v); }); }
+  spdseg.querySelectorAll('button').forEach(function(bn){ bn.addEventListener('click',function(){ setSpeed(parseFloat(bn.dataset.s)); }); });
+  setSpeed(1); setLoc('seoul');
+  window.__lunarStop=stop;
+})();
+
+/* ===================== TABS ===================== */
+(function(){
+  var tabs=document.getElementById('tabs');
+  var secSolar=document.getElementById('sec-solar'), secLunar=document.getElementById('sec-lunar');
+  tabs.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.querySelectorAll('button').forEach(function(x){x.classList.toggle('on', x===b);});
+      var solar=(b.dataset.tab==='solar');
+      secSolar.classList.toggle('hidden', !solar);
+      secLunar.classList.toggle('hidden', solar);
+      if(window.__solarStop) window.__solarStop();
+      if(window.__lunarStop) window.__lunarStop();
+    });
+  });
+})();
+</script>
+</body>
+</html>
