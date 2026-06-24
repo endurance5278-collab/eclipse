@@ -144,7 +144,7 @@
     else { var lo=0,hi=R+Rm; for(var k=0;k<60;k++){var mid=(lo+hi)/2; if(lens(mid,R,Rm)/sunArea>cfg.covmax) lo=mid; else hi=mid;} dmin=(lo+hi)/2; }
     var edge=R+Rm, vel=Math.sqrt(Math.max(0,edge*edge-dmin*dmin))/tmax; geom={Rm:Rm,tmax:tmax,dmin:dmin,vel:vel};
   }
-  var ax=0.940, ay=0.340, px=-0.340, py=0.940;
+  var ax=-0.955, ay=0.296, px=0.296, py=0.955;
   var stars=[]; for(var i=0;i<150;i++) stars.push({x:Math.random()*W,y:Math.random()*(H-20),r:Math.random()*1.1+0.3,t:Math.random()});
   var streamers=[]; for(var i=0;i<72;i++) streamers.push({ang:i/72*6.283+Math.random()*0.04, len:1.28+0.62*Math.random(), w:0.5+Math.random()*1.1});
   var proms=[{ang:0.6,s:7},{ang:2.1,s:5},{ang:3.5,s:8},{ang:4.7,s:5},{ang:5.6,s:6}];
